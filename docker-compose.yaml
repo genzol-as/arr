@@ -16,6 +16,7 @@ services:
       - arr_network
 
     ports:
+      - 8000:8000
       - 8080:8080
       - 6881:6881
       - 6881:6881/udp
@@ -30,7 +31,10 @@ services:
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
       - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING}
       - HTTP_CONTROL_SERVER_AUTH_CONFIG=disable
-
+      - DNS_ADDRESS=1.1.1.1
+      - DOT=off                           # Prevents DoT timeouts
+      - DNS_BLOCKLISTS_UPDATE_PERIOD=0    # Stops the failing GitHub downloads
+      - HEALTH_WAIT_DURATION=30s          # Gives VPN time to stabilize
 
     restart: unless-stopped
 
