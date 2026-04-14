@@ -31,9 +31,10 @@ services:
       - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING}
       - HTTP_CONTROL_SERVER_AUTH_CONFIG=disable
       - WIREGUARD_MTU=1280
+    # DNS FIX
       - DNS_ADDRESS=1.1.1.1
+      - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1,8.8.8.8
       - DOT=off
-      - FIREWALL_OUTBOUND_SUBNETS=0.0.0.0/0
 
 
     restart: unless-stopped
