@@ -1,72 +1,134 @@
 services:
+
 ###############################################
-# GLUETUN - VPN
+# GLUETUN - VPN GATEWAY + KILL SWITCH
 ###############################################
   gluetun:
     image: qmcgaw/gluetun:latest
     container_name: gluetun
+
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    networks:
-      - arr
-    ports:
-      - 8080:8080     # qBittorrent WebUI
-      - 6881:6881     # qBittorrent torrenting port
-      - 6881:6881/udp
-      - 9696:9696     # Prowlarr
-    volumes:
-      - ./gluetun:/gluetun
-    environment:
-      - HTTP_CONTROL_SERVER_ADDRESS=:8000
-      - HTTP_CONTROL_SERVER_AUTH_CONFIG=
-      - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=
-      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE=admin
-      - VPN_SERVICE_PROVIDER=protonvpn
-      - VPN_TYPE=wireguard
-      # --- WireGuard credentials (most providers) ---
-      - WIREGUARD_PRIVATE_KEY=AFeNGbQ8mOWRqmXoYbiH9NgSHEwtG3tXMKYDZ6rLoWc=
-      - SERVER_COUNTRIES=Netherlands
-      - VPN_PORT_FORWARDING=off
 
+    networks:
+      - arr_network
+
+    ports:
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
+
+    volumes:
+      - /docker/appdata/gluetun:/gluetun
+
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - VPN_PORT_FORWARDING=${VPN_PORT_FORWARDING}
+
+    restart: unless-stopped
+
+###############################################
+# GLUETUN WEB UI
+###############################################
   gluetun-webui:
     image: scuzza/gluetun-webui:latest
     container_name: gluetun-webui
-    ports:
-      - "127.0.0.1:3000:3000"
+
     depends_on:
       - gluetun
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
     environment:
       - GLUETUN_CONTROL_URL=http://gluetun:8000
-      # Uncomment if Gluetun auth is enabled:
-      #- GLUETUN_API_KEY=yourtoken
-      #- GLUETUN_USER=username
-      #- GLUETUN_PASSWORD=password
-      # Set to 'true' if behind a reverse proxy (nginx, Traefik, etc.)
       - TRUST_PROXY=true
-    
+
     networks:
-      - arr
+      - arr_network
+
     restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
+
+###############################################
+# QBITTORRENT (VPN ROUTED)
+###############################################
+  qbittorrent:
+    image: ghcr.io/hotio/qbittorrent:latest
+    container_name: qbittorrent
+
+    network_mode: "service:gluetun"
+
+    environment:
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=6881
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+    volumes:
+      - /docker/appdata/qbittorrent:/config
+      - /data:/data
+
+    restart: unless-stopped
+
+###############################################
+# ARR APPS
+###############################################
+  radarr:
+    image: ghcr.io/hotio/radarr:latest
+    container_name: radarr
+    ports:
+      - 7878:7878
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /docker/appdata/radarr:/config
+      - /data:/data
+    networks:
+      - arr_network
+    restart: unless-stopped
+
+  sonarr:
+    image: ghcr.io/hotio/sonarr:latest
+    container_name: sonarr
+    ports:
+      - 8989:8989
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /docker/appdata/sonarr:/config
+      - /data:/data
+    networks:
+      - arr_network
+    restart: unless-stopped
+
+  prowlarr:
+    image: ghcr.io/hotio/prowlarr:latest
+    container_name: prowlarr
+    ports:
+      - 9696:9696
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /docker/appdata/prowlarr:/config
+    networks:
+      - arr_network
+    restart: unless-stopped
+
+###############################################
+# NETWORK
+###############################################
 networks:
-  arr:
+  arr_network:
     driver: bridge
