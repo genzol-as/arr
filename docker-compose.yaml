@@ -20,6 +20,9 @@ services:
       - ./gluetun:/gluetun
     environment:
       - HTTP_CONTROL_SERVER_ADDRESS=:8000
+      - HTTP_CONTROL_SERVER_AUTH_CONFIG=
+      - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE=
       - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=wireguard
       # --- WireGuard credentials (most providers) ---
@@ -36,9 +39,6 @@ services:
       - gluetun
     environment:
       - GLUETUN_CONTROL_URL=http://gluetun:8000
-      - HTTP_CONTROL_SERVER_AUTH_CONFIG=
-      - HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH=
-      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE=
       # Uncomment if Gluetun auth is enabled:
       #- GLUETUN_API_KEY=yourtoken
       #- GLUETUN_USER=username
